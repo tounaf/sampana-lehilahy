@@ -1,3 +1,4 @@
+// lib/screens/cotisation_form_screen.dart
 import 'package:flutter/material.dart';
 import '../models/membre.dart';
 import '../models/cotisation.dart';
@@ -6,7 +7,8 @@ import '../services/database_service.dart';
 
 class CotisationFormScreen extends StatefulWidget {
   final Membre membre;
-  CotisationFormScreen({required this.membre});
+
+  const CotisationFormScreen({required this.membre, super.key});
 
   @override
   _CotisationFormScreenState createState() => _CotisationFormScreenState();
@@ -14,33 +16,11 @@ class CotisationFormScreen extends StatefulWidget {
 
 class _CotisationFormScreenState extends State<CotisationFormScreen> {
   late CotisationRepository _cotisationRepository;
-  Map<String, TextEditingController> _controllers = {};
-  Map<String, bool> _paidMonths = {};
-
-  @override
-  void initState() {
-    super.initState();
-    _cotisationRepository = CotisationRepository(DatabaseService());
-
-    for (var month in _months) {
-      _controllers[month] = TextEditingController();
-      _paidMonths[month] = false;
-    }
-
-    _loadCotisations();
-  }
-
-  Future<void> _loadCotisations() async {
-    List<Cotisation> cotisations =
-        await _cotisationRepository.getCotisationsByMembre(widget.membre.id!);
-    for (var cotisation in cotisations) {
-      _controllers[cotisation.mois]?.text = cotisation.montant.toString();
-      _paidMonths[cotisation.mois] = true;
-    }
-    setState(
-        () {}); // Mettre à jour l'affichage après chargement des cotisations
-  }
-
+  final Map<String, TextEditingController> _controllers = {};
+  final Map<String, bool> _paidMonths = {};
+  final TextEditingController _donAmountController = TextEditingController();
+  final TextEditingController _donDescriptionController =
+      TextEditingController();
   final List<String> _months = [
     'Janvier',
     'Février',
@@ -53,68 +33,212 @@ class _CotisationFormScreenState extends State<CotisationFormScreen> {
     'Septembre',
     'Octobre',
     'Novembre',
-    'Décembre'
+    'Décembre',
   ];
+  List<Cotisation> _dons = [];
 
-  void _saveCotisation() async {
-    List<Cotisation> cotisations = [];
+  @override
+  void initState() {
+    super.initState();
+    _cotisationRepository = CotisationRepository(DatabaseService());
     for (var month in _months) {
-      int amount = int.tryParse(_controllers[month]!.text) ?? 0;
-      if (amount > 0) {
-        // Vérifier si la cotisation existe déjà pour ce membre et ce mois
-        var existingCotisation = await _cotisationRepository
-            .getCotisationByMembreAndMonth(widget.membre.id!, month);
-        if (existingCotisation == null) {
-          cotisations.add(Cotisation(
-            membreId: widget.membre.id!,
-            mois: month,
-            montant: amount,
-          ));
-          _paidMonths[month] = true;
+      _controllers[month] = TextEditingController();
+      _paidMonths[month] = false;
+    }
+    _loadCotisations();
+  }
+
+  Future<void> _loadCotisations() async {
+    final cotisations =
+        await _cotisationRepository.getCotisationsByMembre(widget.membre.id!);
+    setState(() {
+      _dons.clear(); // Réinitialiser la liste des dons
+      for (var cotisation in cotisations) {
+        if (cotisation.mois != null) {
+          _controllers[cotisation.mois!]?.text = cotisation.montant.toString();
+          _paidMonths[cotisation.mois!] = true;
+        } else if (cotisation.description != null) {
+          _dons.add(cotisation);
         }
+      }
+    });
+  }
+
+  Future<void> _saveCotisation() async {
+    final List<Cotisation> cotisationsToAdd = [];
+
+    // Cotisations mensuelles
+    for (var month in _months) {
+      final amountText = _controllers[month]!.text.trim();
+      final amount = int.tryParse(amountText) ?? 0;
+      if (amount > 0 && !_paidMonths[month]!) {
+        cotisationsToAdd.add(Cotisation(
+          membreId: widget.membre.id!,
+          mois: month,
+          montant: amount,
+        ));
+        _paidMonths[month] = true; // Marquer comme payé localement
+        _controllers[month]!.clear(); // Vider le champ après ajout
       }
     }
 
-    // Ajouter les cotisations uniquement si elles n'existent pas déjà
-    if (cotisations.isNotEmpty) {
-      await _cotisationRepository.addCotisations(cotisations);
-      setState(() {}); // Mettre à jour l'affichage
+    // Don ponctuel
+    final donAmountText = _donAmountController.text.trim();
+    final donAmount = int.tryParse(donAmountText) ?? 0;
+    final donDescription = _donDescriptionController.text.trim();
+    if (donAmount > 0 && donDescription.isNotEmpty) {
+      final don = Cotisation(
+        membreId: widget.membre.id!,
+        montant: donAmount,
+        description: donDescription,
+      );
+      cotisationsToAdd.add(don);
+      _dons.add(don);
+      _donAmountController.clear();
+      _donDescriptionController.clear();
     }
+
+    if (cotisationsToAdd.isNotEmpty) {
+      try {
+        await _cotisationRepository.addCotisations(cotisationsToAdd);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+              content: Text('Cotisations et dons enregistrés avec succès')),
+        );
+        setState(() {}); // Rafraîchir l’affichage
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erreur lors de l’enregistrement : $e')),
+        );
+      }
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text('Aucune nouvelle cotisation ou don à enregistrer')),
+      );
+    }
+  }
+
+  @override
+  void dispose() {
+    for (var controller in _controllers.values) {
+      controller.dispose();
+    }
+    _donAmountController.dispose();
+    _donDescriptionController.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('Cotisation de ${widget.membre.nom}')),
+      appBar: AppBar(
+        title: Text('Cotisations de ${widget.membre.nom}',
+            style: const TextStyle(fontFamily: 'Poppins')),
+        backgroundColor: const Color(0xFF2C3E50),
+      ),
       body: Padding(
         padding: const EdgeInsets.all(12.0),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('${widget.membre.nom} ${widget.membre.prenoms}',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+            Text(
+              '${widget.membre.nom} ${widget.membre.prenoms}',
+              style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  fontFamily: 'Poppins'),
+            ),
+            const SizedBox(height: 16),
             Expanded(
-              child: GridView.builder(
-                itemCount: _months.length,
-                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 2, childAspectRatio: 3),
-                itemBuilder: (context, index) {
-                  String month = _months[index];
-                  return Padding(
-                    padding: const EdgeInsets.all(8.0),
-                    child: TextField(
-                      controller: _controllers[month],
+              child: SingleChildScrollView(
+                child: Column(
+                  children: [
+                    GridView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: _months.length,
+                      gridDelegate:
+                          const SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: 2,
+                        childAspectRatio: 3,
+                        crossAxisSpacing: 8,
+                        mainAxisSpacing: 8,
+                      ),
+                      itemBuilder: (context, index) {
+                        final month = _months[index];
+                        return TextField(
+                          controller: _controllers[month],
+                          keyboardType: TextInputType.number,
+                          enabled: !_paidMonths[month]!,
+                          decoration: InputDecoration(
+                            labelText: month,
+                            suffixIcon: _paidMonths[month]!
+                                ? const Icon(Icons.check_circle,
+                                    color: Colors.green)
+                                : null,
+                            border: const OutlineInputBorder(),
+                            disabledBorder: OutlineInputBorder(
+                              borderSide: BorderSide(color: Colors.grey[400]!),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    const Text(
+                      'Ajouter un don',
+                      style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          fontFamily: 'Poppins'),
+                    ),
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: _donAmountController,
                       keyboardType: TextInputType.number,
-                      enabled: !_paidMonths[month]!,
-                      decoration: InputDecoration(
-                        labelText: month,
-                        suffixIcon: _paidMonths[month]!
-                            ? Icon(Icons.check_circle, color: Colors.green)
-                            : null,
+                      decoration: const InputDecoration(
+                        labelText: 'Montant du don',
                         border: OutlineInputBorder(),
                       ),
                     ),
-                  );
-                },
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: _donDescriptionController,
+                      decoration: const InputDecoration(
+                        labelText: 'Description du don',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    if (_dons.isNotEmpty) ...[
+                      const Text(
+                        'Dons effectués',
+                        style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            fontFamily: 'Poppins'),
+                      ),
+                      const SizedBox(height: 8),
+                      ListView.builder(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        itemCount: _dons.length,
+                        itemBuilder: (context, index) {
+                          final don = _dons[index];
+                          return ListTile(
+                            title: Text('Montant: ${don.montant}',
+                                style: const TextStyle(fontFamily: 'Poppins')),
+                            subtitle: Text(don.description ?? '',
+                                style: const TextStyle(fontFamily: 'Poppins')),
+                            trailing: const Icon(Icons.check_circle,
+                                color: Colors.green),
+                          );
+                        },
+                      ),
+                    ],
+                  ],
+                ),
               ),
             ),
           ],
@@ -122,8 +246,8 @@ class _CotisationFormScreenState extends State<CotisationFormScreen> {
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: _saveCotisation,
-        child: Icon(Icons.check),
-        backgroundColor: Colors.green,
+        backgroundColor: const Color(0xFFE67E22),
+        child: const Icon(Icons.save, color: Colors.white),
       ),
     );
   }

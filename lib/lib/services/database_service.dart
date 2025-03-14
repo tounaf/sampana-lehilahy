@@ -55,12 +55,13 @@ class DatabaseService {
           )
         ''');
         await db.execute('''
-          CREATE TABLE cotisations (
+          CREATE TABLE cotisation (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             membreId INTEGER,
             mois TEXT,
             montant INTEGER,
-            FOREIGN KEY (membreId) REFERENCES membres (id) ON DELETE CASCADE
+            description TEXT,
+            FOREIGN KEY (membreId) REFERENCES membre(id)
           )
         ''');
       },

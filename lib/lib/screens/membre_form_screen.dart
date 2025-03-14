@@ -2,6 +2,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:image_cropper/image_cropper.dart';
 import '../models/membre.dart';
 import '../models/fiangonana.dart';
 import '../models/groupe.dart';
@@ -13,7 +14,7 @@ import '../services/database_service.dart';
 class MembreFormScreen extends StatefulWidget {
   final Membre? membre;
 
-  MembreFormScreen({this.membre});
+  const MembreFormScreen({this.membre, super.key});
 
   @override
   _MembreFormScreenState createState() => _MembreFormScreenState();
@@ -86,16 +87,67 @@ class _MembreFormScreenState extends State<MembreFormScreen> {
     final groupes = await _groupeRepository.getAllGroupes();
     setState(() {
       _groupes = groupes;
-      // Pas de valeur par défaut pour groupe (optionnel)
     });
   }
 
   Future<void> _pickImage() async {
     final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(source: ImageSource.gallery);
-    if (pickedFile != null) {
+    await showModalBottomSheet(
+      context: context,
+      builder: (context) => Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          ListTile(
+            leading: const Icon(Icons.camera_alt),
+            title: const Text('Prendre une photo'),
+            onTap: () async {
+              Navigator.pop(context);
+              final pickedFile =
+                  await picker.pickImage(source: ImageSource.camera);
+              if (pickedFile != null) {
+                await _cropImage(File(pickedFile.path));
+              }
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.photo_library),
+            title: const Text('Choisir dans la galerie'),
+            onTap: () async {
+              Navigator.pop(context);
+              final pickedFile =
+                  await picker.pickImage(source: ImageSource.gallery);
+              if (pickedFile != null) {
+                await _cropImage(File(pickedFile.path));
+              }
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _cropImage(File imageFile) async {
+    final croppedFile = await ImageCropper().cropImage(
+      sourcePath: imageFile.path,
+      aspectRatio: const CropAspectRatio(
+          ratioX: 1, ratioY: 1), // Carré pour photo de profil
+      uiSettings: [
+        AndroidUiSettings(
+          toolbarTitle: 'Rogner la photo',
+          toolbarColor: const Color(0xFF2C3E50),
+          toolbarWidgetColor: Colors.white,
+          initAspectRatio: CropAspectRatioPreset.square,
+          lockAspectRatio: true,
+        ),
+        IOSUiSettings(
+          title: 'Rogner la photo',
+          aspectRatioLockEnabled: true,
+        ),
+      ],
+    );
+    if (croppedFile != null) {
       setState(() {
-        _photo = File(pickedFile.path);
+        _photo = File(croppedFile.path);
       });
     }
   }
@@ -148,12 +200,13 @@ class _MembreFormScreenState extends State<MembreFormScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-            widget.membre == null ? 'Ajouter un Membre' : 'Modifier un Membre',
-            style: TextStyle(fontFamily: 'Poppins')),
-        backgroundColor: Color(0xFF2C3E50),
+          widget.membre == null ? 'Ajouter un Membre' : 'Modifier un Membre',
+          style: const TextStyle(fontFamily: 'Poppins'),
+        ),
+        backgroundColor: const Color(0xFF2C3E50),
       ),
       body: SingleChildScrollView(
-        padding: EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(16.0),
         child: Form(
           key: _formKey,
           child: Column(
@@ -164,22 +217,24 @@ class _MembreFormScreenState extends State<MembreFormScreen> {
                   height: 100,
                   width: 100,
                   decoration: BoxDecoration(
-                      shape: BoxShape.circle, color: Colors.grey[300]),
+                    shape: BoxShape.circle,
+                    color: Colors.grey[300],
+                  ),
                   child: _photo != null
                       ? ClipOval(child: Image.file(_photo!, fit: BoxFit.cover))
-                      : Icon(Icons.camera_alt, size: 40),
+                      : const Icon(Icons.camera_alt, size: 40),
                 ),
               ),
-              SizedBox(height: 16),
+              const SizedBox(height: 16),
               TextFormField(
                 controller: _nomController,
-                decoration: InputDecoration(labelText: 'Nom'),
+                decoration: const InputDecoration(labelText: 'Nom'),
                 validator: (value) =>
                     value!.isEmpty ? 'Veuillez entrer un nom' : null,
               ),
               TextFormField(
                 controller: _prenomsController,
-                decoration: InputDecoration(labelText: 'Prénoms'),
+                decoration: const InputDecoration(labelText: 'Prénoms'),
                 validator: (value) =>
                     value!.isEmpty ? 'Veuillez entrer des prénoms' : null,
               ),
@@ -187,27 +242,27 @@ class _MembreFormScreenState extends State<MembreFormScreen> {
                 title: Text(_dateNaissance == null
                     ? 'Date de naissance'
                     : 'Date de naissance: ${_dateNaissance!.toString().split(' ')[0]}'),
-                trailing: Icon(Icons.calendar_today),
+                trailing: const Icon(Icons.calendar_today),
                 onTap: () => _selectDate(context, onDateSelected: (date) {
                   setState(() => _dateNaissance = date);
                 }, initialDate: _dateNaissance),
               ),
               TextFormField(
                 controller: _adresseController,
-                decoration: InputDecoration(labelText: 'Adresse'),
+                decoration: const InputDecoration(labelText: 'Adresse'),
                 validator: (value) =>
                     value!.isEmpty ? 'Veuillez entrer une adresse' : null,
               ),
               TextFormField(
                 controller: _telephoneController,
-                decoration: InputDecoration(labelText: 'Téléphone'),
+                decoration: const InputDecoration(labelText: 'Téléphone'),
                 keyboardType: TextInputType.phone,
                 validator: (value) =>
                     value!.isEmpty ? 'Veuillez entrer un téléphone' : null,
               ),
               DropdownButtonFormField<int>(
                 value: _fiangonanaId,
-                decoration: InputDecoration(labelText: 'Fiangonana'),
+                decoration: const InputDecoration(labelText: 'Fiangonana'),
                 items: _fiangonanas.map((fiangonana) {
                   return DropdownMenuItem<int>(
                     value: fiangonana.id,
@@ -221,7 +276,8 @@ class _MembreFormScreenState extends State<MembreFormScreen> {
               ),
               DropdownButtonFormField<int>(
                 value: _groupeId,
-                decoration: InputDecoration(labelText: 'Groupe (optionnel)'),
+                decoration:
+                    const InputDecoration(labelText: 'Groupe (optionnel)'),
                 items: _groupes.map((groupe) {
                   return DropdownMenuItem<int>(
                     value: groupe.id,
@@ -234,13 +290,13 @@ class _MembreFormScreenState extends State<MembreFormScreen> {
                 title: Text(_dateFva == null
                     ? 'Date FVA (optionnel)'
                     : 'Date FVA: ${_dateFva!.toString().split(' ')[0]}'),
-                trailing: Icon(Icons.calendar_today),
+                trailing: const Icon(Icons.calendar_today),
                 onTap: () => _selectDate(context, onDateSelected: (date) {
                   setState(() => _dateFva = date);
                 }, initialDate: _dateFva),
               ),
               SwitchListTile(
-                title: Text('Baptisé'),
+                title: const Text('Baptisé'),
                 value: _baptise,
                 onChanged: (value) => setState(() => _baptise = value),
               ),
@@ -249,19 +305,20 @@ class _MembreFormScreenState extends State<MembreFormScreen> {
                   title: Text(_dateBapteme == null
                       ? 'Date de baptême'
                       : 'Date de baptême: ${_dateBapteme!.toString().split(' ')[0]}'),
-                  trailing: Icon(Icons.calendar_today),
+                  trailing: const Icon(Icons.calendar_today),
                   onTap: () => _selectDate(context, onDateSelected: (date) {
                     setState(() => _dateBapteme = date);
                   }, initialDate: _dateBapteme),
                 ),
-              SizedBox(height: 20),
+              const SizedBox(height: 20),
               ElevatedButton(
                 onPressed: _saveMembre,
                 style: ElevatedButton.styleFrom(
-                    backgroundColor: Color(0xFFE67E22)),
-                child: Text('Sauvegarder',
-                    style:
-                        TextStyle(fontFamily: 'Poppins', color: Colors.white)),
+                    backgroundColor: const Color(0xFFE67E22)),
+                child: const Text(
+                  'Sauvegarder',
+                  style: TextStyle(fontFamily: 'Poppins', color: Colors.white),
+                ),
               ),
             ],
           ),
