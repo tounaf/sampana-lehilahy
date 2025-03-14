@@ -41,4 +41,13 @@ class CotisationRepository {
     }
     return null;
   }
+
+  Future<int> getTotalCotisationByMembre(int membreId) async {
+    final db = await _databaseService.database;
+    final result = await db.rawQuery(
+        'SELECT SUM(montant) as total FROM cotisations WHERE membreId = ?',
+        [membreId]);
+
+    return result.first['total'] as int? ?? 0;
+  }
 }

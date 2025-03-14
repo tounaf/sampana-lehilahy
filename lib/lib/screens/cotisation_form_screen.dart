@@ -6,6 +6,7 @@ import '../services/database_service.dart';
 
 class CotisationFormScreen extends StatefulWidget {
   final Membre membre;
+
   CotisationFormScreen({required this.membre});
 
   @override
@@ -16,6 +17,23 @@ class _CotisationFormScreenState extends State<CotisationFormScreen> {
   late CotisationRepository _cotisationRepository;
   Map<String, TextEditingController> _controllers = {};
   Map<String, bool> _paidMonths = {};
+  int _totalPaid = 0;
+  String _badge = "En retard 🟥";
+
+  final List<String> _months = [
+    'Janvier',
+    'Février',
+    'Mars',
+    'Avril',
+    'Mai',
+    'Juin',
+    'Juillet',
+    'Août',
+    'Septembre',
+    'Octobre',
+    'Novembre',
+    'Décembre'
+  ];
 
   @override
   void initState() {
@@ -33,35 +51,34 @@ class _CotisationFormScreenState extends State<CotisationFormScreen> {
   Future<void> _loadCotisations() async {
     List<Cotisation> cotisations =
         await _cotisationRepository.getCotisationsByMembre(widget.membre.id!);
+
+    _totalPaid = await _cotisationRepository
+        .getTotalCotisationByMembre(widget.membre.id!);
+    _badge = getBadge(_totalPaid);
+
     for (var cotisation in cotisations) {
       _controllers[cotisation.mois]?.text = cotisation.montant.toString();
       _paidMonths[cotisation.mois] = true;
     }
-    setState(
-        () {}); // Mettre à jour l'affichage après chargement des cotisations
+
+    setState(() {});
   }
 
-  final List<String> _months = [
-    'Janvier',
-    'Février',
-    'Mars',
-    'Avril',
-    'Mai',
-    'Juin',
-    'Juillet',
-    'Août',
-    'Septembre',
-    'Octobre',
-    'Novembre',
-    'Décembre'
-  ];
+  String getBadge(int totalPaid) {
+    if (totalPaid < 6000) {
+      return "En retard 🟥";
+    } else if (totalPaid < 12000) {
+      return "À jour 🟨";
+    } else {
+      return "Excellent 🟩";
+    }
+  }
 
   void _saveCotisation() async {
     List<Cotisation> cotisations = [];
     for (var month in _months) {
       int amount = int.tryParse(_controllers[month]!.text) ?? 0;
       if (amount > 0) {
-        // Vérifier si la cotisation existe déjà pour ce membre et ce mois
         var existingCotisation = await _cotisationRepository
             .getCotisationByMembreAndMonth(widget.membre.id!, month);
         if (existingCotisation == null) {
@@ -75,10 +92,9 @@ class _CotisationFormScreenState extends State<CotisationFormScreen> {
       }
     }
 
-    // Ajouter les cotisations uniquement si elles n'existent pas déjà
     if (cotisations.isNotEmpty) {
       await _cotisationRepository.addCotisations(cotisations);
-      setState(() {}); // Mettre à jour l'affichage
+      _loadCotisations(); // Recharger les données pour mettre à jour le badge
     }
   }
 
@@ -92,6 +108,24 @@ class _CotisationFormScreenState extends State<CotisationFormScreen> {
           children: [
             Text('${widget.membre.nom} ${widget.membre.prenoms}',
                 style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+
+            // Badge de statut
+            Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Chip(
+                label: Text(
+                  _badge,
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
+                backgroundColor: _badge == "En retard 🟥"
+                    ? Colors.red
+                    : _badge == "À jour 🟨"
+                        ? Colors.orange
+                        : Colors.green,
+                padding: EdgeInsets.all(8.0),
+              ),
+            ),
+
             Expanded(
               child: GridView.builder(
                 itemCount: _months.length,
