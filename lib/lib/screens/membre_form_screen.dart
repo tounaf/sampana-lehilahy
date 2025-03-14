@@ -4,8 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../models/membre.dart';
 import '../models/fiangonana.dart';
+import '../models/groupe.dart';
 import '../repositories/membre_repository.dart';
 import '../repositories/fiangonana_repository.dart';
+import '../repositories/groupe_repository.dart';
 import '../services/database_service.dart';
 
 class MembreFormScreen extends StatefulWidget {
@@ -21,6 +23,7 @@ class _MembreFormScreenState extends State<MembreFormScreen> {
   final _formKey = GlobalKey<FormState>();
   late MembreRepository _membreRepository;
   late FiangonanaRepository _fiangonanaRepository;
+  late GroupeRepository _groupeRepository;
 
   late TextEditingController _nomController;
   late TextEditingController _prenomsController;
@@ -34,12 +37,14 @@ class _MembreFormScreenState extends State<MembreFormScreen> {
   int? _fiangonanaId;
   int? _groupeId;
   List<Fiangonana> _fiangonanas = [];
+  List<Groupe> _groupes = [];
 
   @override
   void initState() {
     super.initState();
     _membreRepository = MembreRepository(DatabaseService());
     _fiangonanaRepository = FiangonanaRepository(DatabaseService());
+    _groupeRepository = GroupeRepository(DatabaseService());
 
     if (widget.membre != null) {
       _nomController = TextEditingController(text: widget.membre!.nom);
@@ -64,6 +69,7 @@ class _MembreFormScreenState extends State<MembreFormScreen> {
     }
 
     _loadFiangonanas();
+    _loadGroupes();
   }
 
   Future<void> _loadFiangonanas() async {
@@ -71,8 +77,16 @@ class _MembreFormScreenState extends State<MembreFormScreen> {
     setState(() {
       _fiangonanas = fiangonanas;
       if (_fiangonanaId == null && fiangonanas.isNotEmpty) {
-        _fiangonanaId = fiangonanas.first.id; // Valeur par défaut
+        _fiangonanaId = fiangonanas.first.id;
       }
+    });
+  }
+
+  Future<void> _loadGroupes() async {
+    final groupes = await _groupeRepository.getAllGroupes();
+    setState(() {
+      _groupes = groupes;
+      // Pas de valeur par défaut pour groupe (optionnel)
     });
   }
 
@@ -204,6 +218,17 @@ class _MembreFormScreenState extends State<MembreFormScreen> {
                 validator: (value) => value == null
                     ? 'Veuillez sélectionner une fiangonana'
                     : null,
+              ),
+              DropdownButtonFormField<int>(
+                value: _groupeId,
+                decoration: InputDecoration(labelText: 'Groupe (optionnel)'),
+                items: _groupes.map((groupe) {
+                  return DropdownMenuItem<int>(
+                    value: groupe.id,
+                    child: Text(groupe.nomGroupe),
+                  );
+                }).toList(),
+                onChanged: (value) => setState(() => _groupeId = value),
               ),
               ListTile(
                 title: Text(_dateFva == null

@@ -2,7 +2,7 @@
 class Groupe {
   int? id;
   String nomGroupe;
-  int chefGroupeId; // Référence à un membre
+  int chefGroupeId;
 
   Groupe({
     this.id,
@@ -16,5 +16,13 @@ class Groupe {
       'nomGroupe': nomGroupe,
       'chefGroupeId': chefGroupeId,
     };
+  }
+
+  factory Groupe.fromMap(Map<String, dynamic> map) {
+    return Groupe(
+      id: map['id'],
+      nomGroupe: map['nomGroupe'],
+      chefGroupeId: map['chefGroupeId'],
+    );
   }
 }

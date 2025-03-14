@@ -2,13 +2,14 @@
 import 'dart:io' show Platform;
 import 'package:flutter/material.dart';
 import 'package:sampana/lib/screens/fiangonana_list_screen.dart';
+import 'package:sampana/lib/screens/groupe_list_screen.dart';
 import 'package:sampana/lib/screens/membre_list_screen.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 void main() {
   // if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
-  //   sqfliteFfiInit();
+  sqfliteFfiInit();
   databaseFactory = databaseFactoryFfi;
   // }
   runApp(const SampanaApp());
@@ -70,10 +71,12 @@ class _MainScreenState extends State<MainScreen> {
   final List<Widget> _screens = [
     MembreListScreen(),
     FiangonanaListScreen(),
+    GroupeListScreen(),
   ];
   final List<String> _titles = [
     'Liste des Membres',
     'Liste des Fiangonana',
+    'Liste des Groupes',
   ];
 
   void _onItemTapped(int index) {
@@ -134,6 +137,15 @@ class _MainScreenState extends State<MainScreen> {
               selected: _selectedIndex == 1,
               onTap: () {
                 _onItemTapped(1);
+                Navigator.pop(context);
+              },
+            ),
+            ListTile(
+              leading: Icon(Icons.group, color: Color(0xFFE67E22)),
+              title: Text('Groupes', style: TextStyle(fontFamily: 'Poppins')),
+              selected: _selectedIndex == 2,
+              onTap: () {
+                _onItemTapped(2);
                 Navigator.pop(context);
               },
             ),

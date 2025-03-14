@@ -3,9 +3,9 @@ class Membre {
   int? id;
   String nom;
   String prenoms;
-  String? photoPath; // Chemin vers l'image stockée localement
+  String? photoPath;
   DateTime dateNaissance;
-  int age;
+  int age; // Ajouté comme requis
   String adresse;
   String telephone;
   DateTime? dateFva;

@@ -3,6 +3,7 @@ import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 import '../models/membre.dart';
 import '../models/fiangonana.dart';
+import '../models/groupe.dart';
 
 class DatabaseService {
   static Database? _database;
@@ -27,6 +28,14 @@ class DatabaseService {
           )
         ''');
         await db.execute('''
+          CREATE TABLE groupe (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            nomGroupe TEXT,
+            chefGroupeId INTEGER,
+            FOREIGN KEY (chefGroupeId) REFERENCES membre(id)
+          )
+        ''');
+        await db.execute('''
           CREATE TABLE membre (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             nom TEXT,
@@ -41,7 +50,8 @@ class DatabaseService {
             dateBapteme TEXT,
             fiangonanaId INTEGER,
             groupeId INTEGER,
-            FOREIGN KEY (fiangonanaId) REFERENCES fiangonana(id)
+            FOREIGN KEY (fiangonanaId) REFERENCES fiangonana(id),
+            FOREIGN KEY (groupeId) REFERENCES groupe(id)
           )
         ''');
       },
@@ -102,5 +112,23 @@ class DatabaseService {
     final db = await database;
     await db.update('fiangonana', fiangonana.toMap(),
         where: 'id = ?', whereArgs: [fiangonana.id]);
+  }
+
+  // Méthodes pour Groupe
+  Future<void> insertGroupe(Groupe groupe) async {
+    final db = await database;
+    await db.insert('groupe', groupe.toMap());
+  }
+
+  Future<List<Groupe>> getGroupes() async {
+    final db = await database;
+    final List<Map<String, dynamic>> maps = await db.query('groupe');
+    return List.generate(maps.length, (i) => Groupe.fromMap(maps[i]));
+  }
+
+  Future<void> updateGroupe(Groupe groupe) async {
+    final db = await database;
+    await db.update('groupe', groupe.toMap(),
+        where: 'id = ?', whereArgs: [groupe.id]);
   }
 }

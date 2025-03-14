@@ -3,7 +3,9 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import '../models/membre.dart';
 import '../models/fiangonana.dart';
+import '../models/groupe.dart';
 import '../repositories/fiangonana_repository.dart';
+import '../repositories/groupe_repository.dart';
 import '../services/database_service.dart';
 import 'membre_form_screen.dart';
 
@@ -18,11 +20,13 @@ class MembreDetailScreen extends StatefulWidget {
 
 class _MembreDetailScreenState extends State<MembreDetailScreen> {
   late FiangonanaRepository _fiangonanaRepository;
+  late GroupeRepository _groupeRepository;
 
   @override
   void initState() {
     super.initState();
     _fiangonanaRepository = FiangonanaRepository(DatabaseService());
+    _groupeRepository = GroupeRepository(DatabaseService());
   }
 
   Future<String> _getFiangonanaName(int fiangonanaId) async {
@@ -31,6 +35,15 @@ class _MembreDetailScreenState extends State<MembreDetailScreen> {
         orElse: () =>
             Fiangonana(id: null, nomFiangonana: 'Non défini', adresse: ''));
     return fiangonana.nomFiangonana;
+  }
+
+  Future<String> _getGroupeName(int? groupeId) async {
+    if (groupeId == null) return 'Non assigné';
+    final groupes = await _groupeRepository.getAllGroupes();
+    final groupe = groupes.firstWhere((g) => g.id == groupeId,
+        orElse: () =>
+            Groupe(id: null, nomGroupe: 'Non assigné', chefGroupeId: 0));
+    return groupe.nomGroupe;
   }
 
   @override
@@ -139,8 +152,20 @@ class _MembreDetailScreenState extends State<MembreDetailScreen> {
                               'Fiangonana', snapshot.data ?? 'Non défini');
                         },
                       ),
-                      _buildDetailRow('Groupe ID',
-                          widget.membre.groupeId?.toString() ?? 'Non assigné'),
+                      FutureBuilder<String>(
+                        future: _getGroupeName(widget.membre.groupeId),
+                        builder: (context, snapshot) {
+                          if (snapshot.connectionState ==
+                              ConnectionState.waiting) {
+                            return _buildDetailRow('Groupe', 'Chargement...');
+                          }
+                          if (snapshot.hasError) {
+                            return _buildDetailRow('Groupe', 'Erreur');
+                          }
+                          return _buildDetailRow(
+                              'Groupe', snapshot.data ?? 'Non assigné');
+                        },
+                      ),
                     ],
                   ),
                 ),
