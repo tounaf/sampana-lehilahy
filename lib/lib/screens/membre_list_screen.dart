@@ -1,8 +1,8 @@
-// lib/screens/membre_list_screen.dart
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'membre_form_screen.dart';
 import 'membre_detail_screen.dart';
+import 'cotisation_form_screen.dart';
 import '../models/membre.dart';
 import '../repositories/membre_repository.dart';
 import '../services/database_service.dart';
@@ -27,15 +27,14 @@ class _MembreListScreenState extends State<MembreListScreen> {
       appBar: AppBar(
         title:
             Text('Liste des Membres', style: TextStyle(fontFamily: 'Poppins')),
-        backgroundColor: Color(0xFF2C3E50), // Bleu nuit élégant
+        backgroundColor: Color(0xFF2C3E50),
       ),
       body: FutureBuilder<List<Membre>>(
         future: _membreRepository.getAllMembres(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return Center(
-                child: CircularProgressIndicator(
-                    color: Color(0xFFE67E22))); // Orange chaleureux
+                child: CircularProgressIndicator(color: Color(0xFFE67E22)));
           }
           if (snapshot.hasError) {
             return Center(
@@ -59,68 +58,61 @@ class _MembreListScreenState extends State<MembreListScreen> {
             itemCount: membres.length,
             itemBuilder: (context, index) {
               final membre = membres[index];
-              return GestureDetector(
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (context) =>
-                            MembreDetailScreen(membre: membre)),
-                  ).then((_) => setState(() {}));
-                },
-                child: Card(
-                  elevation: 3,
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12)),
-                  margin: EdgeInsets.symmetric(vertical: 6),
-                  child: Padding(
-                    padding: EdgeInsets.all(12),
-                    child: Row(
-                      children: [
-                        membre.photoPath != null
-                            ? CircleAvatar(
-                                radius: 30,
-                                backgroundImage:
-                                    FileImage(File(membre.photoPath!)),
-                              )
-                            : CircleAvatar(
-                                radius: 30,
-                                backgroundColor:
-                                    Color(0xFFE67E22), // Orange chaleureux
-                                child: Text(
-                                  membre.nom[0],
-                                  style: TextStyle(
-                                      fontSize: 20, color: Colors.white),
-                                ),
-                              ),
-                        SizedBox(width: 16),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                '${membre.nom} ${membre.prenoms}',
-                                style: TextStyle(
-                                  fontFamily: 'Poppins',
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                  color: Color(0xFF2C3E50), // Bleu nuit
-                                ),
-                              ),
-                              SizedBox(height: 4),
-                              Text(
-                                'Âge: ${membre.age} | Tél: ${membre.telephone}',
-                                style: TextStyle(
-                                  fontFamily: 'Poppins',
-                                  fontSize: 14,
-                                  color: Colors.grey[700],
-                                ),
-                              ),
-                            ],
+              return Card(
+                elevation: 3,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
+                margin: EdgeInsets.symmetric(vertical: 6),
+                child: ListTile(
+                  leading: membre.photoPath != null
+                      ? CircleAvatar(
+                          radius: 30,
+                          backgroundImage: FileImage(File(membre.photoPath!)),
+                        )
+                      : CircleAvatar(
+                          radius: 30,
+                          backgroundColor: Color(0xFFE67E22),
+                          child: Text(
+                            membre.nom[0],
+                            style: TextStyle(fontSize: 20, color: Colors.white),
                           ),
                         ),
-                      ],
+                  title: Text(
+                    '${membre.nom} ${membre.prenoms}',
+                    style: TextStyle(
+                      fontFamily: 'Poppins',
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF2C3E50),
                     ),
+                  ),
+                  subtitle: Text(
+                    'Âge: ${membre.age} | Tél: ${membre.telephone}',
+                    style: TextStyle(
+                      fontFamily: 'Poppins',
+                      fontSize: 14,
+                      color: Colors.grey[700],
+                    ),
+                  ),
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (context) =>
+                              MembreDetailScreen(membre: membre)),
+                    ).then((_) => setState(() {}));
+                  },
+                  trailing: IconButton(
+                    icon: Icon(Icons.attach_money, color: Color(0xFFE67E22)),
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) =>
+                              CotisationFormScreen(membre: membre),
+                        ),
+                      ).then((_) => setState(() {}));
+                    },
                   ),
                 ),
               );
@@ -135,7 +127,7 @@ class _MembreListScreenState extends State<MembreListScreen> {
             MaterialPageRoute(builder: (context) => MembreFormScreen()),
           ).then((_) => setState(() {}));
         },
-        backgroundColor: Color(0xFFE67E22), // Orange chaleureux
+        backgroundColor: Color(0xFFE67E22),
         child: Icon(Icons.add, color: Colors.white),
       ),
     );

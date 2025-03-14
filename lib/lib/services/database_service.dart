@@ -54,6 +54,15 @@ class DatabaseService {
             FOREIGN KEY (groupeId) REFERENCES groupe(id)
           )
         ''');
+        await db.execute('''
+          CREATE TABLE cotisations (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            membreId INTEGER,
+            mois TEXT,
+            montant INTEGER,
+            FOREIGN KEY (membreId) REFERENCES membres (id) ON DELETE CASCADE
+          )
+        ''');
       },
     );
   }
