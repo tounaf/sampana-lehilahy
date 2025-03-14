@@ -26,6 +26,19 @@ class _CotisationFormScreenState extends State<CotisationFormScreen> {
       _controllers[month] = TextEditingController();
       _paidMonths[month] = false;
     }
+
+    _loadCotisations();
+  }
+
+  Future<void> _loadCotisations() async {
+    List<Cotisation> cotisations =
+        await _cotisationRepository.getCotisationsByMembre(widget.membre.id!);
+    for (var cotisation in cotisations) {
+      _controllers[cotisation.mois]?.text = cotisation.montant.toString();
+      _paidMonths[cotisation.mois] = true;
+    }
+    setState(
+        () {}); // Mettre à jour l'affichage après chargement des cotisations
   }
 
   final List<String> _months = [
@@ -48,16 +61,25 @@ class _CotisationFormScreenState extends State<CotisationFormScreen> {
     for (var month in _months) {
       int amount = int.tryParse(_controllers[month]!.text) ?? 0;
       if (amount > 0) {
-        cotisations.add(Cotisation(
-          membreId: widget.membre.id!,
-          mois: month,
-          montant: amount,
-        ));
-        _paidMonths[month] = true;
+        // Vérifier si la cotisation existe déjà pour ce membre et ce mois
+        var existingCotisation = await _cotisationRepository
+            .getCotisationByMembreAndMonth(widget.membre.id!, month);
+        if (existingCotisation == null) {
+          cotisations.add(Cotisation(
+            membreId: widget.membre.id!,
+            mois: month,
+            montant: amount,
+          ));
+          _paidMonths[month] = true;
+        }
       }
     }
-    await _cotisationRepository.addCotisations(cotisations);
-    setState(() {}); // Mettre à jour l'affichage
+
+    // Ajouter les cotisations uniquement si elles n'existent pas déjà
+    if (cotisations.isNotEmpty) {
+      await _cotisationRepository.addCotisations(cotisations);
+      setState(() {}); // Mettre à jour l'affichage
+    }
   }
 
   @override
