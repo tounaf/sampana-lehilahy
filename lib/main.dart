@@ -8,10 +8,10 @@ import 'package:sqflite/sqflite.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 void main() {
-  // if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
-  sqfliteFfiInit();
-  databaseFactory = databaseFactoryFfi;
-  // }
+  if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
+    sqfliteFfiInit();
+    databaseFactory = databaseFactoryFfi;
+  }
   runApp(const SampanaApp());
 }
 
